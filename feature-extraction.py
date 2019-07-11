@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     # Download
     print('Download')
-    if False:  # XXX
+    if True:
         download_data()
 
     # Load Data
@@ -173,4 +173,3 @@ if __name__ == "__main__":
     # Save
     print('Save')
     torch.save(deeplab_resnet101, 'deeplab_resnet101.pth')
-    
