@@ -8,8 +8,8 @@ import torch
 import torchvision
 
 train_scenes = ['2_10', '2_11', '3_10', '3_11', '4_10', '4_11', '5_10', '5_11',
-                '5_12', '6_10', '6_11', '6_12', '6_7', '6_8', '6_9', '7_10', '7_11', '7_12', '7_7', '7_8']
-val_scenes = ['2_12', '3_12', '4_12', '7_9']
+                '5_12', '6_10', '6_11', '6_12', '7_10', '7_11', '7_12']
+val_scenes = ['2_12', '3_12', '4_12']
 scenes = train_scenes + val_scenes
 scenes = train_scenes  # XXX
 
@@ -21,6 +21,7 @@ label_data = []
 def download_data():
     s3 = boto3.client('s3')
     for scene in scenes:
+        print('scene={}'.format(scene))
         s3.download_file('raster-vision-raw-data',
                          'isprs-potsdam/5_Labels_for_participants/top_potsdam_{}_label.tif'
                          .format(scene),
