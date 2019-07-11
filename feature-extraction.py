@@ -11,7 +11,7 @@ train_scenes = ['2_10', '2_11', '3_10', '3_11', '4_10', '4_11', '5_10', '5_11',
                 '5_12', '6_10', '6_11', '6_12', '6_7', '6_8', '6_9', '7_10', '7_11', '7_12', '7_7', '7_8']
 val_scenes = ['2_12', '3_12', '4_12', '7_9']
 scenes = train_scenes + val_scenes
-scenes = ['2_10']  # XXX
+scenes = train_scenes  # XXX
 
 rgb_data = []
 elevation_data = []
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # Train
     print('Train')
     steps_per_epoch_per_image = int((6000 * 6000) / (224 * 224 * 64))
-    epochs = 10
+    epochs = 40
     deeplab_resnet101.train()
     for i in range(epochs):
         for j in range(steps_per_epoch_per_image * len(scenes)):
