@@ -17,6 +17,41 @@ rgb_data = []
 elevation_data = []
 label_data = []
 
+image_size = 224
+batch_size = 64
+
+normalize3 = torchvision.transforms.Normalize(
+    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+normalize1 = torchvision.transforms.Normalize(mean=[0.485], std=[0.229])
+transforms3 = torchvision.transforms.Compose(
+    [torchvision.transforms.ToTensor(), normalize3])
+transforms1 = torchvision.transforms.Compose(
+    [torchvision.transforms.ToTensor(), normalize1])
+
+
+def train(model, opt, obj, epochs):
+    steps_per_epoch_per_image = int(
+        (6000 * 6000) / (image_size * image_size * batch_size))
+    steps_per_epoch = steps_per_epoch_per_image * len(scenes)
+    model.train()
+    current_time = time.time()
+    for i in range(epochs):
+        avg_loss = 0.0
+        for j in range(steps_per_epoch):
+            batch_tensor = random_potsdam_training_batch()
+            opt.zero_grad()
+            pred = model(batch_tensor[0])
+            loss = obj(
+                pred.get('out'), batch_tensor[2]) + 0.4*obj(pred.get('aux'), batch_tensor[2])
+            loss.backward()
+            opt.step()
+            avg_loss = avg_loss + loss.item()
+        avg_loss = avg_loss / steps_per_epoch
+        last_time = current_time
+        current_time = time.time()
+        print('epoch={} time={} avg_loss={}'.format(
+            i, current_time - last_time, avg_loss))
+
 
 def download_data():
     s3 = boto3.client('s3')
@@ -60,13 +95,11 @@ def transmute_to_classes(window):
 
 
 def random_potsdam_training_window():
-    size = 224
-
-    x = np.random.randint(0, 6000 - size)
-    y = np.random.randint(0, 6000 - size)
+    x = np.random.randint(0, 6000 - image_size)
+    y = np.random.randint(0, 6000 - image_size)
     z = np.random.randint(0, len(scenes))
 
-    box = (x, y, x + size, y + size)
+    box = (x, y, x + image_size, y + image_size)
     rgb_window = rgb_data[z].crop(box)
     elevation_window = elevation_data[z].crop(box)
     labels_window = label_data[z].crop(box)
@@ -76,8 +109,6 @@ def random_potsdam_training_window():
 
 
 def random_potsdam_training_batch():
-    batch_size = 64
-
     rgbs = []
     elvs = []
     labs = []
@@ -97,7 +128,6 @@ def random_potsdam_training_batch():
 
 
 if __name__ == "__main__":
-
     # RNG
     np.random.seed(seed=33)
 
@@ -108,15 +138,6 @@ if __name__ == "__main__":
     print('Network')
     deeplab_resnet101 = torchvision.models.segmentation.deeplabv3_resnet101(
         pretrained=True)
-
-    # Transforms
-    normalize3 = torchvision.transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    normalize1 = torchvision.transforms.Normalize(mean=[0.485], std=[0.229])
-    transforms3 = torchvision.transforms.Compose(
-        [torchvision.transforms.ToTensor(), normalize3])
-    transforms1 = torchvision.transforms.Compose(
-        [torchvision.transforms.ToTensor(), normalize1])
 
     # Download
     print('Download')
@@ -133,7 +154,9 @@ if __name__ == "__main__":
     last_class_aux = deeplab_resnet101.aux_classifier[4] = torch.nn.Conv2d(
         256, 6, kernel_size=(1, 1), stride=(1, 1))
 
-    # Feature Extraction Only
+    ####### TRAIN LAST LAYER #######
+
+    # Last Layer Only
     for p in deeplab_resnet101.parameters():
         p.requires_grad = False
     for p in last_class.parameters():
@@ -155,22 +178,42 @@ if __name__ == "__main__":
     # Objective Function
     obj = torch.nn.CrossEntropyLoss().to(device)
 
-    # Train
-    print('Train')
-    steps_per_epoch_per_image = int((6000 * 6000) / (224 * 224 * 64))
-    epochs = 40
-    deeplab_resnet101.train()
-    for i in range(epochs):
-        for j in range(steps_per_epoch_per_image * len(scenes)):
-            batch_tensor = random_potsdam_training_batch()
-            opt.zero_grad()
-            pred = deeplab_resnet101(batch_tensor[0])
-            loss = obj(
-                pred.get('out'), batch_tensor[2]) + 0.4*obj(pred.get('aux'), batch_tensor[2])
-            loss.backward()
-            opt.step()
-        print('epoch={} time={} loss={}'.format(i, time.time(), loss.item()))
+    print('Training Last Layer')
+    train(deeplab_resnet101, opt, obj, 10)
 
-    # Save
+    ####### TRAIN ALL LAYERS #######
+
+    batch_size = 16
+
+    # All Layers
+    for p in deeplab_resnet101.parameters():
+        p.requires_grad = True
+
+    # Optimizer
+    ps = []
+    for n, p in deeplab_resnet101.named_parameters():
+        if p.requires_grad == True:
+            ps.append(p)
+    opt = torch.optim.SGD(ps, lr=0.01, momentum=0.9)
+
+    print('Training All Layers')
+    train(deeplab_resnet101, opt, obj, 20)
+
+    ####### TRAIN ALL LAYERS AGAIN #######
+
+    batch_size = 16
+
+    # Optimizer
+    ps = []
+    for n, p in deeplab_resnet101.named_parameters():
+        if p.requires_grad == True:
+            ps.append(p)
+    opt = torch.optim.SGD(ps, lr=0.001, momentum=0.9)
+
+    print('Training All Layers Again')
+    train(deeplab_resnet101, opt, obj, 20)
+
+    ####### SAVE #######
+
     print('Save')
     torch.save(deeplab_resnet101, 'deeplab_resnet101.pth')
