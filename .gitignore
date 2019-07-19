@@ -1,1 +1,3 @@
-deeplab_resnet101.pth
+*.jpg
+*.tif
+*.pth
