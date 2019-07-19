@@ -90,6 +90,9 @@ def transmute_to_classes(window):
     twos = 2*(window[:, :, 1]/0xff).astype(np.long)
     ones = 1*(window[:, :, 2]/0xff).astype(np.long)
     retval = fours + twos + ones
+    cars = (retval == 6)
+    not_cars = (retval != 6)
+    retval = (retval * not_cars) + 5*cars # Change cars from class 6 to class 5
     retval = retval * (retval < 6)  # White is seven, turn it to zero
     return retval
 
