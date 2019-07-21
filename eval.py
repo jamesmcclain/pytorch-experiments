@@ -8,7 +8,6 @@ import torch
 import torchvision
 
 val_scenes = ['2_12', '3_12', '4_12']
-val_scenes = ['2_12']
 scenes = val_scenes
 
 rgb_data = []
@@ -74,7 +73,7 @@ def transmute_to_classes(window):
 
 
 def potsdam_eval_window(x, y, rgb_data, elevation_data, label_data):
-    size = 200
+    size = 1000
     x = int(x * size)
     y = int(y * size)
     box = (x, y, x + size, y + size)
@@ -116,7 +115,7 @@ if __name__ == "__main__":
 
     # Network
     print('Model')
-    if False:
+    if True:
         download_model()
     deeplab_resnet101 = torch.load(
         '/tmp/deeplab_resnet101_cars.pth').to(device)
@@ -124,7 +123,7 @@ if __name__ == "__main__":
 
     # Download
     print('Download Data')
-    if False:
+    if True:
         download_data()
 
     # Load Data
@@ -154,6 +153,10 @@ if __name__ == "__main__":
                                (groundtruth_segments != c)).sum()
                     fns[c] += ((predicted_segments != c) *
                                (groundtruth_segments == c)).sum()
+    with open('output.txt', 'a') as f:
+        f.write('True Positives:  {}\n'.format(tps))
+        f.write('False Positives: {}\n'.format(fps))
+        f.write('False Negatives: {}\n'.format(fns))
     print('True Positives:  {}'.format(tps))
     print('False Positives: {}'.format(fps))
     print('False Negatives: {}'.format(fns))
@@ -166,7 +169,10 @@ if __name__ == "__main__":
         recalls.append(recall)
         precision = tps[c] / (tps[c] + fps[c])
         precisions.append(precision)
-    print('Recalls:   {}'.format(recalls))
+    with open('output.txt', 'a') as f:
+        f.write('Recalls:    {}\n'.format(recalls))
+        f.write('Precisions: {}\n'.format(precisions))
+    print('Recalls:    {}'.format(recalls))
     print('Precisions: {}'.format(precisions))
 
     # f1 Scores
@@ -174,7 +180,7 @@ if __name__ == "__main__":
         'other         ',
         'building      ',
         'tree          ',
-        'low vegitation',
+        'low vegetation',
         'clutter       ',
         'car           '
     ]
@@ -182,12 +188,20 @@ if __name__ == "__main__":
     for c in range(6):
         f1 = 2 * (precisions[c] * recalls[c]) / (precisions[c] + recalls[c])
         f1s.append(f1)
+        with open('output.txt', 'a') as f:
+            f.print('{} {}\n'.format(names[c], f1))
         print('{} {}'.format(names[c], f1))
 
     # Overall f1 Scores
     precision = np.array(tps).sum() / (np.array(tps).sum() + np.array(fps).sum())
     recall = np.array(tps).sum() / (np.array(tps).sum() + np.array(fns).sum())
     f1 = 2 * (precision * recall) / (precision + recall)
+    with open('output.txt', 'a') as f:
+        f.write('Overall Precision: {}\n'.format(precision))
+        f.write('Overall Recall:    {}\n'.format(recall))
+        f.write('Overall f1:        {}\n'.format(f1))
     print('Overall Precision: {}'.format(precision))
     print('Overall Recall:    {}'.format(recall))
     print('Overall f1:        {}'.format(f1))
+
+# ./download_run_upload.sh s3://bucket/potsdam/eval.py output.txt s3://bucket/potsdam/potsdam-eval.txt
