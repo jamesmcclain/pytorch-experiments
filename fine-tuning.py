@@ -9,9 +9,7 @@ import torchvision
 
 train_scenes = ['2_10', '2_11', '3_10', '3_11', '4_10', '4_11', '5_10', '5_11',
                 '5_12', '6_10', '6_11', '6_12', '7_10', '7_11', '7_12']
-val_scenes = ['2_12', '3_12', '4_12']
-scenes = train_scenes + val_scenes
-scenes = train_scenes  # XXX
+scenes = train_scenes
 
 rgb_data = []
 elevation_data = []
@@ -202,18 +200,8 @@ if __name__ == "__main__":
     print('Training All Layers')
     train(deeplab_resnet101, opt, obj, 20)
 
-    ####### TRAIN ALL LAYERS AGAIN #######
-
-    batch_size = 16
-
-    # Optimizer
-    ps = []
-    for n, p in deeplab_resnet101.named_parameters():
-        if p.requires_grad == True:
-            ps.append(p)
-    opt = torch.optim.SGD(ps, lr=0.001, momentum=0.9)
-
     print('Training All Layers Again')
+    opt = torch.optim.SGD(ps, lr=0.001, momentum=0.9)
     train(deeplab_resnet101, opt, obj, 20)
 
     ####### SAVE #######
