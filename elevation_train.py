@@ -16,15 +16,14 @@ elevation_data = []
 label_data = []
 
 image_size = 224
-batch_size = 64
+batch_size = 16
 
 normalize3 = torchvision.transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-normalize1 = torchvision.transforms.Normalize(mean=[0.485], std=[0.229])
 transforms3 = torchvision.transforms.Compose(
     [torchvision.transforms.ToTensor(), normalize3])
 transforms1 = torchvision.transforms.Compose(
-    [torchvision.transforms.ToTensor(), normalize1])
+    [torchvision.transforms.ToTensor()])
 
 
 def train(model, opt, obj, epochs):
@@ -38,7 +37,7 @@ def train(model, opt, obj, epochs):
         for j in range(steps_per_epoch):
             batch_tensor = random_potsdam_training_batch()
             opt.zero_grad()
-            pred = model(batch_tensor[0])
+            pred = model(batch_tensor[1])
             loss = obj(
                 pred.get('out'), batch_tensor[2]) + 0.4*obj(pred.get('aux'), batch_tensor[2])
             loss.backward()
@@ -69,6 +68,13 @@ def download_data():
     del s3
 
 
+def download_model():
+    s3 = boto3.client('s3')
+    s3.download_file('raster-vision-mcclain',
+                     'potsdam/deeplab_resnet101_rgb.pth', '/tmp/deeplab_resnet101_rgb.pth')
+    del s3
+
+
 def load_data():
     for scene in scenes:
         rgb_data.append(Image.open('/tmp/rgb_{}.tif'.format(scene)))
@@ -90,7 +96,8 @@ def transmute_to_classes(window):
     retval = fours + twos + ones
     cars = (retval == 6)
     not_cars = (retval != 6)
-    retval = (retval * not_cars) + 5*cars # Change cars from class 6 to class 5
+    # Change cars from class 6 to class 5
+    retval = (retval * not_cars) + 5*cars
     retval = retval * (retval < 6)  # White is seven, turn it to zero
     return retval
 
@@ -136,9 +143,11 @@ if __name__ == "__main__":
     device = torch.device("cuda")
 
     # Network
-    print('Network')
-    deeplab_resnet101 = torchvision.models.segmentation.deeplabv3_resnet101(
-        pretrained=True)
+    print('Model')
+    if True:
+        download_model()
+    deeplab_resnet101 = torch.load(
+        '/tmp/deeplab_resnet101_rgb.pth').to(device)
 
     # Download
     print('Download')
@@ -149,25 +158,17 @@ if __name__ == "__main__":
     print('Load Data')
     load_data()
 
-    # Reshape Network for 6 Classes
-    last_class = deeplab_resnet101.classifier[4] = torch.nn.Conv2d(
-        256, 6, kernel_size=(1, 1), stride=(1, 1))
-    last_class_aux = deeplab_resnet101.aux_classifier[4] = torch.nn.Conv2d(
-        256, 6, kernel_size=(1, 1), stride=(1, 1))
+    # Reshape the Network for 1 Input Channel
+    input_filters = deeplab_resnet101.backbone.conv1 = torch.nn.Conv2d(
+        1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False).to(device)
 
-    ####### TRAIN LAST LAYER #######
+    ####### TRAIN INPUT LAYER #######
 
-    # Last Layer Only
+    # Input Channels, Only
     for p in deeplab_resnet101.parameters():
         p.requires_grad = False
-    for p in last_class.parameters():
+    for p in input_filters.parameters():
         p.requires_grad = True
-    for p in last_class_aux.parameters():
-        p.requires_grad = True
-
-    # Send network to device
-    print('Network to Device')
-    deeplab_resnet101 = deeplab_resnet101.to(device)
 
     # Optimizer
     ps = []
@@ -179,8 +180,19 @@ if __name__ == "__main__":
     # Objective Function
     obj = torch.nn.CrossEntropyLoss().to(device)
 
-    print('Training Last Layer')
+    print('Training First Layer')
     train(deeplab_resnet101, opt, obj, 10)
+
+    print('Training First Layer Again')
+    opt = torch.optim.SGD(ps, lr=0.001, momentum=0.9)
+    train(deeplab_resnet101, opt, obj, 10)
+
+    print('Saving and Uploading Model w/ Trained Filters')
+    torch.save(deeplab_resnet101, 'deeplab_resnet101_elevation_filters.pth')
+    s3 = boto3.client('s3')
+    s3.upload_file('deeplab_resnet101_elevation_filters.pth',
+                   'raster-vision-mcclain', 'potsdam/deeplab_resnet101_elevation_filters.pth')
+    del s3
 
     ####### TRAIN ALL LAYERS #######
 
@@ -206,5 +218,5 @@ if __name__ == "__main__":
 
     ####### SAVE #######
 
-    print('Save')
+    print('Saving Trained Model')
     torch.save(deeplab_resnet101, 'deeplab_resnet101.pth')

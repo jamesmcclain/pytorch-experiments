@@ -16,11 +16,10 @@ label_data = []
 
 normalize3 = torchvision.transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-normalize1 = torchvision.transforms.Normalize(mean=[0.485], std=[0.229])
 transforms3 = torchvision.transforms.Compose(
     [torchvision.transforms.ToTensor(), normalize3])
 transforms1 = torchvision.transforms.Compose(
-    [torchvision.transforms.ToTensor(), normalize1])
+    [torchvision.transforms.ToTensor()])
 
 
 def download_data():
@@ -44,7 +43,7 @@ def download_data():
 def download_model():
     s3 = boto3.client('s3')
     s3.download_file('raster-vision-mcclain',
-                     'potsdam/deeplab_resnet101_rgb.pth', '/tmp/deeplab_resnet101_rgb.pth')
+                     'potsdam/deeplab_resnet101_elevation.pth', '/tmp/deeplab_resnet101_elevation.pth')
     del s3
 
 
@@ -114,20 +113,20 @@ if __name__ == "__main__":
     device = torch.device("cuda")
 
     # Network
-    print('Model')
+    print('Getting Model')
     if True:
         download_model()
     deeplab_resnet101 = torch.load(
-        '/tmp/deeplab_resnet101_rgb.pth').to(device)
+        '/tmp/deeplab_resnet101_elevation.pth').to(device)
     deeplab_resnet101.eval()
 
     # Download
-    print('Download Data')
+    print('Downloading Data')
     if True:
         download_data()
 
     # Load Data
-    print('Load Data')
+    print('Loading Data')
     load_data()
 
     # Compute True Positives, False Positives, False Negatives
@@ -139,7 +138,7 @@ if __name__ == "__main__":
             for y in range(6):
                 batch_tensor = potsdam_eval_batch(
                     x, y, rgb_data[i], elevation_data[i], label_data[i])
-                out = deeplab_resnet101(batch_tensor[0])
+                out = deeplab_resnet101(batch_tensor[1])
                 out = out['out'].data.cpu().numpy()
                 index = 0
                 predicted_segments = np.apply_along_axis(
@@ -204,4 +203,4 @@ if __name__ == "__main__":
     print('Overall Recall:    {}'.format(recall))
     print('Overall f1:        {}'.format(f1))
 
-# ./download_run_upload.sh s3://bucket/potsdam/eval.py output.txt s3://bucket/potsdam/potsdam-eval.txt
+# ./download_run_upload.sh s3://bucket/potsdam/elevation_eval.py output.txt s3://bucket/potsdam/potsdam-elevation-eval.txt
