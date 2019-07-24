@@ -71,7 +71,7 @@ def download_data():
 def download_model():
     s3 = boto3.client('s3')
     s3.download_file('raster-vision-mcclain',
-                     'potsdam/deeplab_resnet101_cars.pth', '/tmp/deeplab_resnet101_cars.pth')
+                     'potsdam/deeplab_resnet101_rgb.pth', '/tmp/deeplab_resnet101_rgb.pth')
     del s3
 
 
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     if True:
         download_model()
     deeplab_resnet101 = torch.load(
-        '/tmp/deeplab_resnet101_cars.pth').to(device)
+        '/tmp/deeplab_resnet101_rgb.pth').to(device)
 
     # Download
     print('Download')
