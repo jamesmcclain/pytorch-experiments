@@ -8,7 +8,8 @@ import boto3
 import torch
 import torchvision
 
-val_scenes = ['2_12', '3_12', '4_12']
+val_scenes = ['2_12', '3_12', '4_12', '6_07',
+              '6_08', '6_09', '7_07', '7_08', '7_09']
 scenes = val_scenes
 
 rgb_data = []
@@ -25,7 +26,8 @@ transforms1 = torchvision.transforms.Compose(
 
 def download_data():
     s3 = boto3.client('s3')
-    for scene in scenes:
+    for elevation_scene in scenes:
+        scene = elevation_scene.replace('_0', '_')
         print('scene={}'.format(scene))
         s3.download_file('raster-vision-raw-data',
                          'isprs-potsdam/5_Labels_for_participants/top_potsdam_{}_label.tif'
@@ -33,7 +35,7 @@ def download_data():
                          '/tmp/labels_{}.tif'.format(scene))
         s3.download_file('raster-vision-raw-data',
                          'isprs-potsdam/1_DSM_normalisation/dsm_potsdam_0{}_normalized_lastools.jpg'
-                         .format(scene),
+                         .format(elevation_scene),
                          '/tmp/elevation_{}.jpg'.format(scene))
         s3.download_file('raster-vision-mcclain',
                          'potsdam/top_potsdam_{}_RGB.tif'.format(scene),
@@ -50,6 +52,7 @@ def download_model(model_name):
 
 def load_data():
     for scene in scenes:
+        scene = scene.replace('_0', '_')
         rgb_data.append(Image.open('/tmp/rgb_{}.tif'.format(scene)))
         elevation_data.append(Image.open(
             '/tmp/elevation_{}.jpg'.format(scene)))
@@ -114,22 +117,23 @@ if __name__ == "__main__":
     # GPU
     device = torch.device("cuda")
 
-    # Network
-    print('Model')
+    # Model
+    print('Getting Model')
     download_model(sys.argv[1])
     deeplab_resnet101 = torch.load(
         '/tmp/deeplab_resnet101.pth').to(device)
     deeplab_resnet101.eval()
 
     # Download
-    print('Download Data')
+    print('Downloading Data')
     download_data()
 
     # Load Data
-    print('Load Data')
+    print('Loading Data')
     load_data()
 
     # Compute True Positives, False Positives, False Negatives
+    print('Computing')
     tps = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     fps = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     fns = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -148,11 +152,11 @@ if __name__ == "__main__":
                         index]
                     for c in range(6):
                         tps[c] += ((predicted_segments == c) *
-                                (groundtruth_segments == c)).sum()
+                                   (groundtruth_segments == c)).sum()
                         fps[c] += ((predicted_segments == c) *
-                                (groundtruth_segments != c)).sum()
+                                   (groundtruth_segments != c)).sum()
                         fns[c] += ((predicted_segments != c) *
-                                (groundtruth_segments == c)).sum()
+                                   (groundtruth_segments == c)).sum()
         with open('output.txt', 'a') as f:
             f.write('True Positives:  {}\n'.format(tps))
             f.write('False Positives: {}\n'.format(fps))

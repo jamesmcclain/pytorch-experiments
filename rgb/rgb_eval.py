@@ -7,7 +7,8 @@ import boto3
 import torch
 import torchvision
 
-val_scenes = ['2_12', '3_12', '4_12']
+val_scenes = ['2_12', '3_12', '4_12', '6_07',
+              '6_08', '6_09', '7_07', '7_08', '7_09']
 scenes = val_scenes
 
 rgb_data = []
@@ -16,16 +17,16 @@ label_data = []
 
 normalize3 = torchvision.transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-normalize1 = torchvision.transforms.Normalize(mean=[0.485], std=[0.229])
 transforms3 = torchvision.transforms.Compose(
     [torchvision.transforms.ToTensor(), normalize3])
 transforms1 = torchvision.transforms.Compose(
-    [torchvision.transforms.ToTensor(), normalize1])
+    [torchvision.transforms.ToTensor()])
 
 
 def download_data():
     s3 = boto3.client('s3')
-    for scene in scenes:
+    for elevation_scene in scenes:
+        scene = elevation_scene.replace('_0', '_')
         print('scene={}'.format(scene))
         s3.download_file('raster-vision-raw-data',
                          'isprs-potsdam/5_Labels_for_participants/top_potsdam_{}_label.tif'
@@ -33,7 +34,7 @@ def download_data():
                          '/tmp/labels_{}.tif'.format(scene))
         s3.download_file('raster-vision-raw-data',
                          'isprs-potsdam/1_DSM_normalisation/dsm_potsdam_0{}_normalized_lastools.jpg'
-                         .format(scene),
+                         .format(elevation_scene),
                          '/tmp/elevation_{}.jpg'.format(scene))
         s3.download_file('raster-vision-mcclain',
                          'potsdam/top_potsdam_{}_RGB.tif'.format(scene),
@@ -50,6 +51,7 @@ def download_model():
 
 def load_data():
     for scene in scenes:
+        scene = scene.replace('_0', '_')
         rgb_data.append(Image.open('/tmp/rgb_{}.tif'.format(scene)))
         elevation_data.append(Image.open(
             '/tmp/elevation_{}.jpg'.format(scene)))
@@ -113,8 +115,8 @@ if __name__ == "__main__":
     # GPU
     device = torch.device("cuda")
 
-    # Network
-    print('Model')
+    # Model
+    print('Getting Model')
     if True:
         download_model()
     deeplab_resnet101 = torch.load(
@@ -122,44 +124,46 @@ if __name__ == "__main__":
     deeplab_resnet101.eval()
 
     # Download
-    print('Download Data')
+    print('Downloading Data')
     if True:
         download_data()
 
     # Load Data
-    print('Load Data')
+    print('Loading Data')
     load_data()
 
     # Compute True Positives, False Positives, False Negatives
+    print('Computing')
     tps = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     fps = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     fns = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    for i in range(len(rgb_data)):
-        for x in range(6):
-            for y in range(6):
-                batch_tensor = potsdam_eval_batch(
-                    x, y, rgb_data[i], elevation_data[i], label_data[i])
-                out = deeplab_resnet101(batch_tensor[0])
-                out = out['out'].data.cpu().numpy()
-                index = 0
-                predicted_segments = np.apply_along_axis(
-                    np.argmax, 0, out[index])
-                groundtruth_segments = batch_tensor[2].data.cpu().numpy()[
-                    index]
-                for c in range(6):
-                    tps[c] += ((predicted_segments == c) *
-                               (groundtruth_segments == c)).sum()
-                    fps[c] += ((predicted_segments == c) *
-                               (groundtruth_segments != c)).sum()
-                    fns[c] += ((predicted_segments != c) *
-                               (groundtruth_segments == c)).sum()
-    with open('output.txt', 'a') as f:
-        f.write('True Positives:  {}\n'.format(tps))
-        f.write('False Positives: {}\n'.format(fps))
-        f.write('False Negatives: {}\n'.format(fns))
-    print('True Positives:  {}'.format(tps))
-    print('False Positives: {}'.format(fps))
-    print('False Negatives: {}'.format(fns))
+    with torch.no_grad():
+        for i in range(len(rgb_data)):
+            for x in range(6):
+                for y in range(6):
+                    batch_tensor = potsdam_eval_batch(
+                        x, y, rgb_data[i], elevation_data[i], label_data[i])
+                    out = deeplab_resnet101(batch_tensor[0])
+                    out = out['out'].data.cpu().numpy()
+                    index = 0
+                    predicted_segments = np.apply_along_axis(
+                        np.argmax, 0, out[index])
+                    groundtruth_segments = batch_tensor[2].data.cpu().numpy()[
+                        index]
+                    for c in range(6):
+                        tps[c] += ((predicted_segments == c) *
+                                   (groundtruth_segments == c)).sum()
+                        fps[c] += ((predicted_segments == c) *
+                                   (groundtruth_segments != c)).sum()
+                        fns[c] += ((predicted_segments != c) *
+                                   (groundtruth_segments == c)).sum()
+        with open('output.txt', 'a') as f:
+            f.write('True Positives:  {}\n'.format(tps))
+            f.write('False Positives: {}\n'.format(fps))
+            f.write('False Negatives: {}\n'.format(fns))
+        print('True Positives:  {}'.format(tps))
+        print('False Positives: {}'.format(fps))
+        print('False Negatives: {}'.format(fns))
 
     # Recalls, Precisions
     recalls = []
@@ -193,7 +197,8 @@ if __name__ == "__main__":
         print('{} {}'.format(names[c], f1))
 
     # Overall f1 Scores
-    precision = np.array(tps).sum() / (np.array(tps).sum() + np.array(fps).sum())
+    precision = np.array(tps).sum() / \
+        (np.array(tps).sum() + np.array(fps).sum())
     recall = np.array(tps).sum() / (np.array(tps).sum() + np.array(fns).sum())
     f1 = 2 * (precision * recall) / (precision + recall)
     with open('output.txt', 'a') as f:
