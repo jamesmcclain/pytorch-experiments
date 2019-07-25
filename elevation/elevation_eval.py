@@ -203,4 +203,4 @@ if __name__ == "__main__":
     print('Overall Recall:    {}'.format(recall))
     print('Overall f1:        {}'.format(f1))
 
-# ./download_run_upload.sh s3://bucket/potsdam/elevation_eval.py output.txt s3://bucket/potsdam/potsdam-elevation-eval.txt
+# ./download_run_upload.sh s3://raster-vision-mcclain/potsdam/elevation_eval.py output.txt s3://raster-vision-mcclain/potsdam/potsdam-elevation-eval.txt

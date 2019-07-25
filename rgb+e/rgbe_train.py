@@ -233,4 +233,4 @@ if __name__ == "__main__":
     print('Saving Trained Model')
     torch.save(deeplab_resnet101, 'deeplab_resnet101.pth')
 
-# ./download_run_upload.sh s3://bucket/potsdam/rgbe_train.py deeplab_resnet101.pth s3://bucket/potsdam/deeplab_resnet101_e2rgb.pth e_into_rgb
+# ./download_run_upload.sh s3://raster-vision-mcclain/potsdam/rgbe_train.py deeplab_resnet101.pth s3://raster-vision-mcclain/potsdam/deeplab_resnet101_empty2coco.pth empty_into_coco
