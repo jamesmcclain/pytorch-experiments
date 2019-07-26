@@ -220,3 +220,5 @@ if __name__ == "__main__":
 
     print('Saving Trained Model')
     torch.save(deeplab_resnet101, 'deeplab_resnet101.pth')
+
+# ./download_run_upload.sh s3://raster-vision-mcclain/potsdam/elevation_train.py deeplab_resnet101.pth s3://raster-vision-mcclain/potsdam/deeplab_resnet101_elevation.pth

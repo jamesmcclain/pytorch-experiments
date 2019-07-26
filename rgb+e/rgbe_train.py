@@ -1,9 +1,10 @@
+import sys
 import time
 
-import numpy as np
 from PIL import Image
 
 import boto3
+import numpy as np
 import torch
 import torchvision
 
@@ -16,15 +17,14 @@ elevation_data = []
 label_data = []
 
 image_size = 224
-batch_size = 64
+batch_size = 16
 
 normalize3 = torchvision.transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-normalize1 = torchvision.transforms.Normalize(mean=[0.485], std=[0.229])
 transforms3 = torchvision.transforms.Compose(
     [torchvision.transforms.ToTensor(), normalize3])
 transforms1 = torchvision.transforms.Compose(
-    [torchvision.transforms.ToTensor(), normalize1])
+    [torchvision.transforms.ToTensor()])
 
 
 def train(model, opt, obj, epochs):
@@ -40,7 +40,7 @@ def train(model, opt, obj, epochs):
             opt.zero_grad()
             pred = model(batch_tensor[0])
             loss = obj(
-                pred.get('out'), batch_tensor[2]) + 0.4*obj(pred.get('aux'), batch_tensor[2])
+                pred.get('out'), batch_tensor[1]) + 0.4*obj(pred.get('aux'), batch_tensor[1])
             loss.backward()
             opt.step()
             avg_loss = avg_loss + loss.item()
@@ -69,6 +69,15 @@ def download_data():
     del s3
 
 
+def download_model():
+    s3 = boto3.client('s3')
+    s3.download_file('raster-vision-mcclain',
+                     'potsdam/deeplab_resnet101_rgb.pth', '/tmp/deeplab_resnet101_rgb.pth')
+    s3.download_file('raster-vision-mcclain',
+                     'potsdam/deeplab_resnet101_elevation.pth', '/tmp/deeplab_resnet101_elevation.pth')
+    del s3
+
+
 def load_data():
     for scene in scenes:
         rgb_data.append(Image.open('/tmp/rgb_{}.tif'.format(scene)))
@@ -90,7 +99,8 @@ def transmute_to_classes(window):
     retval = fours + twos + ones
     cars = (retval == 6)
     not_cars = (retval != 6)
-    retval = (retval * not_cars) + 5*cars # Change cars from class 6 to class 5
+    # Change cars from class 6 to class 5
+    retval = (retval * not_cars) + 5*cars
     retval = retval * (retval < 6)  # White is seven, turn it to zero
     return retval
 
@@ -116,7 +126,6 @@ def random_potsdam_training_batch():
 
     for i in range(batch_size):
         rgb, elv, lab = random_potsdam_training_window()
-
         rgbs.append(transforms3(rgb))
         elvs.append(transforms1(elv))
         labs.append(torch.unsqueeze(torch.from_numpy(lab), 0))
@@ -124,8 +133,9 @@ def random_potsdam_training_batch():
     rgbs = torch.stack(rgbs).to(device)
     elvs = torch.stack(elvs).to(device)
     labs = torch.cat(labs, dim=0).to(device)
+    rgbes = torch.cat([rgbs, elvs], dim=1)
 
-    return (rgbs, elvs, labs)
+    return (rgbes, labs)
 
 
 if __name__ == "__main__":
@@ -136,66 +146,80 @@ if __name__ == "__main__":
     device = torch.device("cuda")
 
     # Network
-    print('Network')
-    deeplab_resnet101 = torchvision.models.segmentation.deeplabv3_resnet101(
-        pretrained=True)
+    print('Model')
+    download_model()
+    deeplab_rgb = torch.load(
+        '/tmp/deeplab_resnet101_rgb.pth').cpu()
+    deeplab_elevation = torch.load(
+        '/tmp/deeplab_resnet101_elevation.pth').cpu()
 
-    # Download
-    print('Download')
+    # Reconfigure the Network
+    input_filters = torch.nn.Conv2d(4, 64, kernel_size=(
+        7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+    if sys.argv[1] == 'e_into_rgb':
+        input_filters.weight.data = torch.cat(
+            [deeplab_rgb.backbone.conv1.weight.data, deeplab_elevation.backbone.conv1.weight.data], dim=1)
+        deeplab_rgb.backbone.conv1 = input_filters
+        deeplab_resnet101 = deeplab_rgb.to(device)
+    elif sys.argv[1] == 'rgb_into_e':
+        input_filters.weight.data = torch.cat(
+            [deeplab_rgb.backbone.conv1.weight.data, deeplab_elevation.backbone.conv1.weight.data], dim=1)
+        deeplab_elevation.backbone.conv1 = input_filters
+        deeplab_resnet101 = deeplab_elevation.to(device)
+    elif sys.argv[1] == 'rgbe_into_coco':
+        input_filters.weight.data = torch.cat(
+            [deeplab_rgb.backbone.conv1.weight.data, deeplab_elevation.backbone.conv1.weight.data], dim=1)
+        deeplab_resnet101 = torchvision.models.segmentation.deeplabv3_resnet101(
+            pretrained=True)
+        last_class = deeplab_resnet101.classifier[4] = torch.nn.Conv2d(
+            256, 6, kernel_size=(1, 1), stride=(1, 1))
+        last_class_aux = deeplab_resnet101.aux_classifier[4] = torch.nn.Conv2d(
+            256, 6, kernel_size=(1, 1), stride=(1, 1))
+        deeplab_resnet101.backbone.conv1 = input_filters
+        deeplab_resnet101 = deeplab_resnet101.to(device)
+    elif sys.argv[1] == 'empty_into_coco':
+        deeplab_resnet101 = torchvision.models.segmentation.deeplabv3_resnet101(
+            pretrained=True)
+        last_class = deeplab_resnet101.classifier[4] = torch.nn.Conv2d(
+            256, 6, kernel_size=(1, 1), stride=(1, 1))
+        last_class_aux = deeplab_resnet101.aux_classifier[4] = torch.nn.Conv2d(
+            256, 6, kernel_size=(1, 1), stride=(1, 1))
+        deeplab_resnet101.backbone.conv1 = input_filters
+        deeplab_resnet101 = deeplab_resnet101.to(device)
+    elif sys.argv[1] == 'empty_into_rgb':
+        deeplab_rgb.backbone.conv1 = input_filters
+        deeplab_resnet101 = deeplab_rgb.to(device)
+
+    # Tidy Up
+    del deeplab_rgb
+    del deeplab_elevation
+    del input_filters
+    input_filters = deeplab_resnet101.backbone.conv1
+
+    # Download Data
+    print('Downloading Data')
     if True:
         download_data()
 
     # Load Data
-    print('Load Data')
+    print('Loading Data')
     load_data()
-
-    # Reshape Network for 6 Classes
-    last_class = deeplab_resnet101.classifier[4] = torch.nn.Conv2d(
-        256, 6, kernel_size=(1, 1), stride=(1, 1))
-    last_class_aux = deeplab_resnet101.aux_classifier[4] = torch.nn.Conv2d(
-        256, 6, kernel_size=(1, 1), stride=(1, 1))
-
-    ####### TRAIN LAST LAYER #######
-
-    # Last Layer Only
-    for p in deeplab_resnet101.parameters():
-        p.requires_grad = False
-    for p in last_class.parameters():
-        p.requires_grad = True
-    for p in last_class_aux.parameters():
-        p.requires_grad = True
-
-    # Send network to device
-    print('Network to Device')
-    deeplab_resnet101 = deeplab_resnet101.to(device)
-
-    # Optimizer
-    ps = []
-    for n, p in deeplab_resnet101.named_parameters():
-        if p.requires_grad == True:
-            ps.append(p)
-    opt = torch.optim.SGD(ps, lr=0.01, momentum=0.9)
 
     # Objective Function
     obj = torch.nn.CrossEntropyLoss().to(device)
 
-    print('Training Last Layer')
-    train(deeplab_resnet101, opt, obj, 10)
-
-    ####### TRAIN ALL LAYERS #######
-
-    batch_size = 16
-
-    # All Layers
+    # Optimizer
     for p in deeplab_resnet101.parameters():
         p.requires_grad = True
-
-    # Optimizer
     ps = []
     for n, p in deeplab_resnet101.named_parameters():
         if p.requires_grad == True:
             ps.append(p)
     opt = torch.optim.SGD(ps, lr=0.01, momentum=0.9)
+
+    ####### TRAIN ALL LAYERS #######
+
+    batch_size = 16
 
     print('Training All Layers')
     train(deeplab_resnet101, opt, obj, 20)
@@ -206,5 +230,7 @@ if __name__ == "__main__":
 
     ####### SAVE #######
 
-    print('Save')
+    print('Saving Trained Model')
     torch.save(deeplab_resnet101, 'deeplab_resnet101.pth')
+
+# ./download_run_upload.sh s3://raster-vision-mcclain/potsdam/rgbe_train.py deeplab_resnet101.pth s3://raster-vision-mcclain/potsdam/deeplab_resnet101_empty2coco.pth empty_into_coco
