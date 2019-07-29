@@ -19,8 +19,10 @@ normalize3 = torchvision.transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 transforms3 = torchvision.transforms.Compose(
     [torchvision.transforms.ToTensor(), normalize3])
+normalize1 = torchvision.transforms.Normalize(
+    mean=[0.100], std=[0.125])
 transforms1 = torchvision.transforms.Compose(
-    [torchvision.transforms.ToTensor()])
+    [torchvision.transforms.ToTensor(), normalize1])
 
 
 def download_data():
