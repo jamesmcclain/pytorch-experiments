@@ -268,7 +268,18 @@ if __name__ == "__main__":
                            '{}/deeplab_all_{}epochs_{}channels_1.pth'.format(dataset_name, epochs, CHANNELS))
 
         print('\t TRAINING ALL LAYERS AGAIN')
+        for p in deeplab.parameters():
+            p.requires_grad = True
+
+        ps = []
+        for n, p in deeplab.named_parameters():
+            if p.requires_grad == True:
+                ps.append(p)
+            else:
+                p.grad = None
+
         opt = torch.optim.SGD(ps, lr=0.001, momentum=0.9)
+
         train(deeplab, opt, obj, steps_per_epoch, epochs, batch_size,
               raster_ds, mask_ds, width, height, device)
 
@@ -281,3 +292,5 @@ if __name__ == "__main__":
 # ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10
 # ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10 shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai
 # ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10 vegas_roads/data/MUL_AOI_2_Vegas.tif vegas_roads/data/mask_AOI_2_Vegas.tif vegas_roads
+# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10 vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas_norm 0.00430695255445 0.00663654054088 0.0088010822481 0.00657800217491 0.00631494305997 0.00622265943938 0.00825494408698 0.00528162575785 0.00421938530572 0.00686205490534 0.00948095772569 0.00736970404955 0.00725928605596 0.00681741366099 0.00908610352256 0.00581618206724
+# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 3 10 vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas_norm 0.00631494305997 0.0088010822481 0.00663654054088 0.00725928605596 0.00948095772569 0.00686205490534
