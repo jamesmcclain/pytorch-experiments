@@ -14,6 +14,8 @@ WINDOW_SIZE = 224
 MAGIC_NUMBER = (2**16) - 1
 OTHER_MAGIC_NUMBER = (2**8) - 1
 CHANNELS = 8
+MEAN = None
+STD = None
 
 # BAND=1 mu=282.25613565591533 sigma=276.51741601066635
 # BAND=2 mu=434.92568434644414 sigma=449.7047682214329
@@ -52,6 +54,13 @@ def get_random_training_window(raster_ds, mask_ds, width, height):
     not_nodata = (data[0] != MAGIC_NUMBER)
     labels = (labels * not_nodata) + (2*nodata)  # class 2 ignored
 
+    # Normalize
+    for i in range(0, len(bands)):
+        data[i] = np.array(data[i] / float((2**16) -1), dtype=np.float32)
+        if MEAN and STD:
+            data[i] = data[i] - MEAN[i]
+            data[i] = data[i] / STD[i]
+
     data = np.stack(data, axis=0)
     return (data, labels)
 
@@ -65,7 +74,6 @@ def get_random_training_batch(raster_ds, mask_ds, width, height, batch_size, dev
         labels.append(l)
 
     data = np.stack(data, axis=0)
-    data = np.array(data / float((2**16) - 1), dtype=np.float32)
     data = torch.from_numpy(data).to(device)
     labels = np.array(np.stack(labels, axis=0), dtype=np.long)
     labels = torch.from_numpy(labels).to(device)
@@ -115,6 +123,13 @@ if __name__ == "__main__":
         mask_name = 'vegas/data/mask_AOI_2_Vegas.tif'
         dataset_name = 'vegas'
     print('{} {} {}'.format(mul_name, mask_name, dataset_name))
+
+    if len(sys.argv) > 5 + 2*CHANNELS:
+        MEAN = []
+        STD = []
+        for i in range(6,6+CHANNELS):
+            MEAN.append(float(sys.argv[i]))
+            STD.append(float(sys.argv[i + CHANNELS]))
 
     print('DATA')
     if not os.path.exists('/tmp/mul.tif'):
@@ -196,6 +211,24 @@ if __name__ == "__main__":
             deeplab = torch.load('deeplab.pth').to(device)
             print('\t\t SUCCESSFULLY RESTARTED')
         except:
+            last_class = deeplab.classifier[4]
+            last_class_aux = deeplab.aux_classifier[4]
+            input_filters = deeplab.backbone.conv1
+            for p in deeplab.parameters():
+                p.requires_grad = False
+            for p in last_class.parameters():
+                p.requires_grad = True
+            for p in last_class_aux.parameters():
+                p.requires_grad = True
+            for p in input_filters.parameters():
+                p.requires_grad = True
+
+            ps = []
+            for n, p in deeplab.named_parameters():
+                if p.requires_grad == True:
+                    ps.append(p)
+                else:
+                    p.grad = None
             opt = torch.optim.SGD(ps, lr=0.001, momentum=0.9)
             train(deeplab, opt, obj, steps_per_epoch, epochs // 2, batch_size,
                   raster_ds, mask_ds, width, height, device)
