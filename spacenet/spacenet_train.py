@@ -17,15 +17,6 @@ CHANNELS = 8
 MEAN = None
 STD = None
 
-# BAND=1 mu=282.25613565591533 sigma=276.51741601066635
-# BAND=2 mu=434.92568434644414 sigma=449.7047682214329
-# BAND=3 mu=576.778925128917 sigma=621.334564553244
-# BAND=4 mu=431.0893725326917 sigma=482.97355488737406
-# BAND=5 mu=413.849793435062 sigma=475.73731167726834
-# BAND=6 mu=407.8019863596957 sigma=446.7792042730571
-# BAND=7 mu=540.9877607404478 sigma=595.4577943508493
-# BAND=8 mu=346.13134404092824 sigma=381.1634917763915
-
 
 def get_random_training_window(raster_ds, mask_ds, width, height):
     x2 = 0
@@ -56,7 +47,7 @@ def get_random_training_window(raster_ds, mask_ds, width, height):
 
     # Normalize
     for i in range(0, len(bands)):
-        data[i] = np.array(data[i] / float((2**16) -1), dtype=np.float32)
+        data[i] = np.array(data[i] / float((2**16) - 1), dtype=np.float32)
         if MEAN and STD:
             data[i] = data[i] - MEAN[i]
             data[i] = data[i] / STD[i]
@@ -127,7 +118,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 5 + 2*CHANNELS:
         MEAN = []
         STD = []
-        for i in range(6,6+CHANNELS):
+        for i in range(6, 6+CHANNELS):
             MEAN.append(float(sys.argv[i]))
             STD.append(float(sys.argv[i + CHANNELS]))
 
@@ -289,8 +280,8 @@ if __name__ == "__main__":
         s3.upload_file('deeplab.pth', 'raster-vision-mcclain',
                        '{}/deeplab_all_{}epochs_{}channels.pth'.format(dataset_name, epochs, CHANNELS))
 
-# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10
-# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10 shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai
-# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10 vegas_roads/data/MUL_AOI_2_Vegas.tif vegas_roads/data/mask_AOI_2_Vegas.tif vegas_roads
-# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 8 10 vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas_norm 0.00430695255445 0.00663654054088 0.0088010822481 0.00657800217491 0.00631494305997 0.00622265943938 0.00825494408698 0.00528162575785 0.00421938530572 0.00686205490534 0.00948095772569 0.00736970404955 0.00725928605596 0.00681741366099 0.00908610352256 0.00581618206724
-# ./download_run_upload.sh s3://raster-vision-mcclain/vegas/vegas_train.py vegas_train.py s3://raster-vision-mcclain/xxx 3 10 vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas_norm 0.00631494305997 0.0088010822481 0.00663654054088 0.00725928605596 0.00948095772569 0.00686205490534
+# ./download_run_upload.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py spacenet_train.py s3://raster-vision-mcclain/xxx 8 10
+# ./download_run_upload.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py spacenet_train.py s3://raster-vision-mcclain/xxx 8 10 shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai
+# ./download_run_upload.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py spacenet_train.py s3://raster-vision-mcclain/xxx 8 10 vegas_roads/data/MUL_AOI_2_Vegas.tif vegas_roads/data/mask_AOI_2_Vegas.tif vegas_roads
+# ./download_run_upload.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py spacenet_train.py s3://raster-vision-mcclain/xxx 8 10 vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas_norm 0.00430695255445 0.00663654054088 0.0088010822481 0.00657800217491 0.00631494305997 0.00622265943938 0.00825494408698 0.00528162575785 0.00421938530572 0.00686205490534 0.00948095772569 0.00736970404955 0.00725928605596 0.00681741366099 0.00908610352256 0.00581618206724
+# ./download_run_upload.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py spacenet_train.py s3://raster-vision-mcclain/xxx 3 10 vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas_norm 0.00631494305997 0.0088010822481 0.00663654054088 0.00725928605596 0.00948095772569 0.00686205490534
