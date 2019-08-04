@@ -12,6 +12,7 @@ import boto3
 import rasterio as rio
 from sklearn.metrics import mutual_info_score
 from tabulate import tabulate
+from scipy.stats import entropy
 
 os.environ['CURL_CA_BUNDLE'] = '/etc/ssl/certs/ca-certificates.crt'
 
@@ -74,14 +75,20 @@ if __name__ == "__main__":
             mi_tab[i][j] = mi_tab[j][i] = mutual_info_score(None, None, c_xy)
             c_xy = np.histogram2d(bands2[i], bands2[j])[0]
             mi_tab2[i][j] = mi_tab2[j][i] = mutual_info_score(None, None, c_xy)
+    print(tabulate(mi_tab, tablefmt='fancy_grid'))
+    print(tabulate(mi_tab2, tablefmt='fancy_grid'))
 
     mi_tab3 = np.zeros((len(bands), 1))
     for i in range(0, len(bands)):
         c_xy = np.histogram2d(bands[i], labels)[0]
         mi_tab3[i][0] = mutual_info_score(None, None, c_xy)
-
-    print(tabulate(mi_tab, tablefmt='fancy_grid'))
-    print(tabulate(mi_tab2, tablefmt='fancy_grid'))
     print(tabulate(mi_tab3, tablefmt='fancy_grid'))
+
+    entropy_tab = np.zeros((len(bands)+1, 1))
+    for i in range(0, len(bands)):
+        hist = np.histogram(bands[i])[0]
+        entropy_tab[i][0] = entropy(hist)
+    entropy_tab[len(bands)][0] = entropy(np.histogram(labels)[0])
+    print(tabulate(entropy_tab, tablefmt='fancy_grid'))
 
 # ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_stats.py
