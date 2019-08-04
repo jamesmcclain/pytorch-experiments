@@ -18,7 +18,7 @@ os.environ['CURL_CA_BUNDLE'] = '/etc/ssl/certs/ca-certificates.crt'
 MAGIC_NUMBER = (2**16) - 1
 
 
-def get_normalized_band(raster_ds, i, b = None):
+def get_normalized_band(raster_ds, i, b=None):
     a = raster_ds.read(i).flatten()
     if b is None:
         a = np.extract(a < MAGIC_NUMBER, a)
@@ -27,7 +27,7 @@ def get_normalized_band(raster_ds, i, b = None):
     mean = a.mean()
     std = a.std()
     a = (a - mean) / std
-    return (mean, std, a)
+    return a
 
 
 if __name__ == "__main__":
@@ -55,26 +55,16 @@ if __name__ == "__main__":
         labels = mask_ds.read(1).flatten()
     with rio.open('/tmp/mul.tif') as raster_ds:
         bands = []
-        means = []
-        stds = []
         bands2 = []
-        means2 = []
-        stds2 = []
         for i in raster_ds.indexes:
             print('\t BAND {}'.format(i))
-            mean, std, a = get_normalized_band(raster_ds, i)
-            means.append(mean)
-            stds.append(std)
+            a = get_normalized_band(raster_ds, i)
             bands.append(a)
-            mean, std, a = get_normalized_band(raster_ds, i, labels == 255)
-            means2.append(mean)
-            stds2.append(std)
+            a = get_normalized_band(raster_ds, i, labels == 255)
             bands2.append(a)
-
-    means = np.array(means)
-    stds = np.array(stds)
-    means2 = np.array(means2)
-    stds2 = np.array(stds)
+        band1 = raster_ds.read(i).flatten()
+        labels = np.extract(band1 < MAGIC_NUMBER, labels == 255)
+        del band1
 
     mi_tab = np.identity(len(bands))
     mi_tab2 = np.identity(len(bands))
@@ -85,7 +75,13 @@ if __name__ == "__main__":
             c_xy = np.histogram2d(bands2[i], bands2[j])[0]
             mi_tab2[i][j] = mi_tab2[j][i] = mutual_info_score(None, None, c_xy)
 
+    mi_tab3 = np.zeros((len(bands), 1))
+    for i in range(0, len(bands)):
+        c_xy = np.histogram2d(bands[i], labels)[0]
+        mi_tab3[i][0] = mutual_info_score(None, None, c_xy)
+
     print(tabulate(mi_tab, tablefmt='fancy_grid'))
     print(tabulate(mi_tab2, tablefmt='fancy_grid'))
+    print(tabulate(mi_tab3, tablefmt='fancy_grid'))
 
 # ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_stats.py
