@@ -329,3 +329,10 @@ if __name__ == "__main__":
 # ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 3 3channels 5 5 5 15 raster-vision-mcclain vegas_roads/data/MUL_AOI_2_Vegas.tif vegas_roads/data/mask_AOI_2_Vegas.tif vegas_roads
 # ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 8 8channels 5 5 5 15 raster-vision-mcclain shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai
 # ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 3 3channels 5 5 5 15 raster-vision-mcclain shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai
+
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 8 8channels5x 5 5 5 15 raster-vision-mcclain vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas 5.0
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 3 3channels5x 5 5 5 15 raster-vision-mcclain vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas 5.0
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 8 8channels5x 5 5 5 15 raster-vision-mcclain vegas_roads/data/MUL_AOI_2_Vegas.tif vegas_roads/data/mask_AOI_2_Vegas.tif vegas_roads 5.0
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 3 3channels5x 5 5 5 15 raster-vision-mcclain vegas_roads/data/MUL_AOI_2_Vegas.tif vegas_roads/data/mask_AOI_2_Vegas.tif vegas_roads 5.0
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 8 8channels5x 5 5 5 15 raster-vision-mcclain shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai 5.0
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_train.py 3 3channels5x 5 5 5 15 raster-vision-mcclain shanghai/data/MUL_AOI_4_Shanghai.tif shanghai/data/mask_AOI_4_Shanghai.tif shanghai 5.0
