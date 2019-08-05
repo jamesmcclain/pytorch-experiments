@@ -189,3 +189,6 @@ if __name__ == "__main__":
     del s3
 
 # ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_eval.py 8 raster-vision-mcclain vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas/deeplab_8channels5x.pth vegas/8channels5x.npy vegas/gt8.npy
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_eval.py 8 raster-vision-mcclain vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas/deeplab_8channels.pth vegas/8channels.npy vegas/gt8.npy
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_eval.py 3 raster-vision-mcclain vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas/deeplab_3channels5x.pth vegas/3channels5x.npy vegas/gt3.npy
+# ./download_run.sh s3://raster-vision-mcclain/spacenet/spacenet_eval.py 3 raster-vision-mcclain vegas/data/MUL_AOI_2_Vegas.tif vegas/data/mask_AOI_2_Vegas.tif vegas/deeplab_3channels.pth vegas/3channels.npy vegas/gt3.npy

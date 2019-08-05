@@ -36,18 +36,18 @@ if __name__ == "__main__":
     print('DATA')
 
     if len(sys.argv) > 2:
-        bucket = sys.argv[2]
+        bucket = sys.argv[1]
     else:
         bucket = 'raster-vision-mcclain'
 
     if not os.path.exists('/tmp/mul.tif'):
         s3 = boto3.client('s3')
-        s3.download_file(bucket, sys.argv[3], '/tmp/mul.tif')
+        s3.download_file(bucket, sys.argv[2], '/tmp/mul.tif')
         del s3
 
     if not os.path.exists('/tmp/mask.tif'):
         s3 = boto3.client('s3')
-        s3.download_file(bucket, sys.argv[4], '/tmp/mask.tif')
+        s3.download_file(bucket, sys.argv[3], '/tmp/mask.tif')
         del s3
 
     print('COMPUTING')
