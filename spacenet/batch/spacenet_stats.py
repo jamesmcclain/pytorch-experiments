@@ -37,8 +37,6 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 2:
         bucket = sys.argv[1]
-    else:
-        bucket = 'raster-vision-mcclain'
 
     if not os.path.exists('/tmp/mul.tif'):
         s3 = boto3.client('s3')
