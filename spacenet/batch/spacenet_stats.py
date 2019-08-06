@@ -68,7 +68,7 @@ if __name__ == "__main__":
     mi_tab = np.identity(len(bands))
     mi_tab2 = np.identity(len(bands))
     for i in range(0, len(bands)):
-        for j in range(i+1, len(bands)):
+        for j in range(i, len(bands)):
             c_xy = np.histogram2d(bands[i], bands[j])[0]
             mi_tab[i][j] = mi_tab[j][i] = mutual_info_score(None, None, c_xy)
             c_xy = np.histogram2d(bands2[i], bands2[j])[0]
