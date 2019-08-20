@@ -125,6 +125,7 @@ if __name__ == "__main__":
     tps = [0.0, 0.0]
     fps = [0.0, 0.0]
     fns = [0.0, 0.0]
+    tns = [0.0, 0.0]
     preds = []
     ground_truth = []
 
@@ -152,6 +153,7 @@ if __name__ == "__main__":
                 tps[i] = tps[i] + ((out == i)*(labels == i)).sum()
                 fps[i] = fps[i] + ((out == i)*(labels != i)).sum()
                 fns[i] = fns[i] + ((out != i)*(labels == i)).sum()
+                tns[i] = tns[i] + ((out != i)*(labels != i)).sum()
 
             preds.append(out.flatten())
             ground_truth.append(labels.flatten())
@@ -159,17 +161,23 @@ if __name__ == "__main__":
     print('True Positives  {}'.format(tps))
     print('False Positives {}'.format(fps))
     print('False Negatives {}'.format(fns))
+    print('True Negatives {}'.format(tns))
 
     recalls = []
     precisions = []
+    accuracies = []
+
     for i in range(0, 2):
         recall = tps[i] / (tps[i] + fns[i])
         recalls.append(recall)
         precision = tps[i] / (tps[i] + fps[i])
         precisions.append(precision)
+        accuracy = (tps[i] + tns[i]) / (tps[i] + fps[i] + fns[i] + tns[i])
+        accuracies.append(accuracy)
 
     print('Recalls    {}'.format(recalls))
     print('Precisions {}'.format(precisions))
+    print('Accuracies {}'.format(accuracies))
 
     f1s = []
     for i in range(0, 2):
