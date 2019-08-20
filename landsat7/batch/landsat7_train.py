@@ -15,7 +15,7 @@ os.environ['CURL_CA_BUNDLE'] = '/etc/ssl/certs/ca-certificates.crt'
 
 WINDOW_SIZE = 224
 CHANNELS = 7
-UUID = 'xxx'
+UUID = None
 MEANS = []
 STDS = []
 
